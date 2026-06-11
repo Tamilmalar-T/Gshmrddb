@@ -1,0 +1,1 @@
+This is a clinical diagnostic report mock file used to verify patient record updates.
