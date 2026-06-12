@@ -323,14 +323,60 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
-        const pageText = textContent.items.map(item => item.str).join(' ');
         
+        // Extract raw string items
+        const rawItems = textContent.items.map(item => item.str.trim()).filter(s => s.length > 0);
+        
+        // 1. Check if this is an Exported Table from our own system
+        const isTableFormat = rawItems.some(str => str.includes('Clinical Patient Records Database Report')) || 
+                              rawItems.findIndex(str => str.includes('IP No') || str.includes('Patient Name')) !== -1;
+
+        if (isTableFormat) {
+          // Find where the actual data starts (after the headers)
+          const headerIdx = rawItems.findIndex(str => str === 'Created By' || str === 'Gender');
+          if (headerIdx !== -1) {
+            let cursor = headerIdx + 1;
+            // The exported table has 7 columns: IP No, Patient Name, Age, Date, Type, Gender, Created By
+            while (cursor + 6 < rawItems.length) {
+              // Attempt to parse a row. We check if the 3rd item is a number (Age) to verify alignment.
+              if (!isNaN(parseInt(rawItems[cursor + 2]))) {
+                const rowDate = rawItems[cursor + 3];
+                // Convert DD/MM/YYYY to YYYY-MM-DD
+                let formattedDate = rowDate;
+                if (rowDate.includes('/')) {
+                  const parts = rowDate.split('/');
+                  if (parts.length === 3) formattedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                }
+
+                mapped.push({
+                  id: mapped.length,
+                  original: { 'Source': `PDF Table Page ${i}` },
+                  mapped: {
+                    ipNo: rawItems[cursor],
+                    name: rawItems[cursor + 1],
+                    age: rawItems[cursor + 2],
+                    date: formattedDate,
+                    recordType: rawItems[cursor + 4],
+                    gender: rawItems[cursor + 5]
+                  }
+                });
+                cursor += 7; // move to next row
+              } else {
+                cursor++; // misalignment, advance by 1 to try to recover
+              }
+            }
+          }
+          continue; // Skip the Regex parser for this page
+        }
+
+        // 2. Unstructured Report parsing (Regex)
+        const pageText = textContent.items.map(item => item.str).join(' ');
         const extractedData = parsePDFTextToFormData(pageText);
         
         // Only include if we found at least some meaningful data
         if (extractedData.name || extractedData.ipNo) {
           mapped.push({
-            id: i - 1,
+            id: mapped.length,
             original: { 'Source': `PDF Page ${i}` },
             mapped: extractedData
           });
