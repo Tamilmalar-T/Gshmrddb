@@ -146,17 +146,19 @@ function App() {
         await fetch(`${API_URL}/api/patients/${id}`, { method: 'DELETE' });
       }
 
-      const deletedRecord = records.find(r => (r.id || r._id) === id);
-      const updated = records.map(r => {
-        if ((r.id || r._id) === id) return null;
-        if (deletedRecord && r.ipNo === deletedRecord.ipNo && r.date === deletedRecord.date) {
-          return { ...r, updatedAt: new Date().toISOString() };
-        }
-        return r;
-      }).filter(Boolean);
-
-      setRecords(updated);
-      localStorage.setItem('medflow_submissions', JSON.stringify(updated));
+      setRecords(prevRecords => {
+        const deletedRecord = prevRecords.find(r => (r.id || r._id) === id);
+        const updated = prevRecords.map(r => {
+          if ((r.id || r._id) === id) return null;
+          if (deletedRecord && r.ipNo === deletedRecord.ipNo && r.date === deletedRecord.date) {
+            return { ...r, updatedAt: new Date().toISOString() };
+          }
+          return r;
+        }).filter(Boolean);
+        
+        localStorage.setItem('medflow_submissions', JSON.stringify(updated));
+        return updated;
+      });
     } catch (error) {
       console.error("Failed to delete record from DB", error);
     }
