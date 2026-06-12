@@ -11,11 +11,8 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
   const [filterValue, setFilterValue] = useState('All');
   const [isEditing, setIsEditing] = useState(false);
   const [newFiles, setNewFiles] = useState([]);
-  const [filesToDelete, setFilesToDelete] = useState([]);
   const [keepOriginal, setKeepOriginal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
 
   const formatDateToDDMMYYYY = (dateStr) => {
     if (!dateStr) return 'N/A';
@@ -109,10 +106,6 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
     return matchesSearch && matchesCategory;
   });
 
-  // Reset page when filters or search term change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, filterValue, filterCategory]);
 
   const handleExportPDF = () => {
     if (filteredRecords.length === 0) {
@@ -198,11 +191,10 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
   });
   const groupedRecords = Array.from(groupedRecordsMap.values());
 
-  const totalPages = Math.ceil(groupedRecords.length / itemsPerPage);
-  const paginatedRecords = groupedRecords.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // Show only 20 items by default. If searching or filtering, show all matching items.
+  const displayedRecords = (searchTerm.trim() || filterValue !== 'All')
+    ? groupedRecords
+    : groupedRecords.slice(0, 20);
 
   // Action helper to view files
   const handleViewFile = (record) => {
@@ -485,7 +477,7 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
                 </tr>
               </thead>
               <tbody>
-                {paginatedRecords.map((group) => (
+                {displayedRecords.map((group) => (
                   <tr key={group.id || group._id} className="record-row" style={groupedRecords.filter(r => r.ipNo === group.ipNo).length > 1 ? { borderLeft: '4px solid #ef4444' } : {}}>
 
                     {/* IP column */}
@@ -628,7 +620,7 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
 
           {/* Mobile-only Premium Card Grid */}
           <div className="mobile-cards-wrapper mobile-only">
-            {paginatedRecords.map((group) => (
+            {displayedRecords.map((group) => (
               <div key={group.id || group._id} className="mobile-record-card" style={groupedRecords.filter(r => r.ipNo === group.ipNo).length > 1 ? { borderLeft: '4px solid #ef4444' } : {}}>
                 <div className="card-header-row">
                   <div className="patient-avatar-name">
@@ -727,45 +719,6 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
               </div>
             ))}
           </div>
-
-          {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', marginTop: '20px', marginBottom: '20px' }}>
-              <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  background: currentPage === 1 ? '#f8fafc' : '#ffffff',
-                  color: currentPage === 1 ? '#94a3b8' : '#4f46e5',
-                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                  fontWeight: '600'
-                }}
-              >
-                Previous
-              </button>
-              <span style={{ fontSize: '0.9rem', color: '#475569', fontWeight: '500' }}>
-                Page {currentPage} of {totalPages}
-              </span>
-              <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  background: currentPage === totalPages ? '#f8fafc' : '#ffffff',
-                  color: currentPage === totalPages ? '#94a3b8' : '#4f46e5',
-                  cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
-                  fontWeight: '600'
-                }}
-              >
-                Next
-              </button>
-            </div>
-          )}
         </>
       )}
 
