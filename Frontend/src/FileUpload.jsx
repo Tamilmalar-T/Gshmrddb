@@ -4,6 +4,10 @@ import { Row, Col } from 'react-bootstrap';
 import './FileUpload.css';
 import { API_URL } from './config';
 import * as XLSX from 'xlsx';
+import * as pdfjsLib from 'pdfjs-dist';
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setRequests, existingRecords = [], showNotifications, setShowNotifications }) {
   const [formData, setFormData] = useState({
@@ -259,9 +263,88 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
     return data;
   };
 
-  const handleImportExcel = (e) => {
+  const parsePDFTextToFormData = (text) => {
+    const data = {
+      ipNo: '',
+      name: '',
+      age: '',
+      date: new Date().toISOString().split('T')[0],
+      gender: '',
+      recordType: '',
+    };
+
+    const normalizedText = text.replace(/\s+/g, ' ');
+
+    // Match IP No (e.g., "IP No: 12345", "IP: 12345")
+    const ipMatch = normalizedText.match(/(?:ip\s*no|ip\s*number|ip|serial|id)[. :\-\t]*([a-zA-Z0-9-]+)/i);
+    if (ipMatch) data.ipNo = ipMatch[1];
+
+    // Match Patient Name (e.g., "Patient Name: John Doe", "Name: Jane Doe")
+    const nameMatch = normalizedText.match(/(?:patient\s*name|name\s*of\s*patient|name)[. :\-\t]+([A-Za-z. ]+?)(?=\s*(?:age|sex|gender|date|ip|mr|dr|#|$))/i);
+    if (nameMatch) data.name = nameMatch[1].trim();
+
+    // Match Age
+    const ageMatch = normalizedText.match(/(?:age|years)[. :\-\t]*(\d+)/i);
+    if (ageMatch) data.age = ageMatch[1];
+
+    // Match Gender
+    const genderMatch = normalizedText.match(/(?:gender|sex)[. :\-\t]*(male|female|m|f|other)/i);
+    if (genderMatch) {
+      const g = genderMatch[1].toLowerCase();
+      if (g.startsWith('m')) data.gender = 'Male';
+      else if (g.startsWith('f')) data.gender = 'Female';
+      else data.gender = 'Other';
+    }
+
+    // Match Date (e.g., "Discharge Date: 12-10-2023", "Date: 2023/10/12")
+    const dateMatch = normalizedText.match(/(?:date|discharge\s*date|admission\s*date)[. :\-\t]*([\d]{1,4}[-/.\\][\d]{1,2}[-/.\\][\d]{1,4})/i);
+    if (dateMatch) {
+      const d = new Date(dateMatch[1]);
+      if (!isNaN(d.getTime())) {
+        data.date = d.toISOString().split('T')[0];
+      }
+    }
+
+    // Match Record Type
+    if (/mlc/i.test(normalizedText)) data.recordType = 'MLC Patient';
+    else if (/advice|medical/i.test(normalizedText)) data.recordType = 'Medical Advice';
+    else if (/birth/i.test(normalizedText)) data.recordType = 'Birth';
+    else if (/death/i.test(normalizedText)) data.recordType = 'Death';
+
+    return data;
+  };
+
+  const handleImportPDF = async (file) => {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let fullText = '';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map(item => item.str).join(' ');
+        fullText += pageText + ' \n ';
+      }
+      
+      const extractedData = parsePDFTextToFormData(fullText);
+      setFormData(prev => ({ ...prev, ...extractedData }));
+      
+    } catch (err) {
+      console.error("Failed to parse PDF:", err);
+      alert("Failed to extract data from the PDF file. Please enter details manually.");
+    }
+  };
+
+  const handleImportFile = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+      await handleImportPDF(file);
+      e.target.value = '';
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
@@ -488,8 +571,8 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
                 type="file"
                 ref={excelInputRef}
                 style={{ display: 'none' }}
-                accept=".xlsx, .xls"
-                onChange={handleImportExcel}
+                accept=".xlsx, .xls, .pdf"
+                onChange={handleImportFile}
               />
 
               {/* Excel Import Button */}
@@ -514,7 +597,7 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
                   height: '48px',
                   marginRight: '8px'
                 }}
-                title="Import Patient Details from Excel"
+                title="Import Patient Details from Excel or PDF"
               >
 
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width="24" height="24">
