@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { API_URL } from './config';
 
 const ROLES = ['Gatekeeper', 'Doctor', 'Admin', 'Nurse', 'Receptionist'];
@@ -40,6 +41,7 @@ export default function UsersPanel() {
   const [photoPreview, setPhotoPreview] = useState('');
   const [search, setSearch] = useState('');
   const [errors, setErrors] = useState({});
+  const [showPassword, setShowPassword] = useState(false);
   const fileRef = useRef();
   const formRef = useRef();
 
@@ -374,7 +376,15 @@ export default function UsersPanel() {
               {/* Password */}
               <div>
                 <label style={labelStyle}>Password <span style={{ color: '#ef4444' }}>*</span></label>
-                <input id="field-password" type="password" value={form.password} onChange={setField('password')} style={inp('password')} placeholder="Enter password" />
+                <div style={{ position: 'relative' }}>
+                  <input id="field-password" type={showPassword ? "text" : "password"} value={form.password} onChange={setField('password')} style={{ ...inp('password'), paddingRight: '40px' }} placeholder="Enter password" />
+                  <div 
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: '#64748b' }}
+                  >
+                    {showPassword ? <FaEyeSlash /> : <FaEye />}
+                  </div>
+                </div>
                 {errors.password && <div style={{ color: '#ef4444', fontSize: '0.7rem', marginTop: 3 }}>⚠ {errors.password}</div>}
               </div>
 

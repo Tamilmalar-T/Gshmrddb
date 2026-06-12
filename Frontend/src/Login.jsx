@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col } from 'react-bootstrap';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { API_URL } from './config';
 
 const Login = ({ onLoginSuccess }) => {
@@ -7,10 +8,12 @@ const Login = ({ onLoginSuccess }) => {
     return localStorage.getItem('medflow_authEmail') || '';
   });
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   
   // Secondary Gatekeeper credentials state
   const [secondaryUsername, setSecondaryUsername] = useState('');
   const [secondaryPassword, setSecondaryPassword] = useState('');
+  const [showSecondaryPassword, setShowSecondaryPassword] = useState(false);
 
   // Dynamic gatekeeper users array persisted in localStorage (sadhana/0633 default)
   const [gatekeeperUsers, setGatekeeperUsers] = useState(() => {
@@ -94,36 +97,56 @@ const Login = ({ onLoginSuccess }) => {
     setIsAuthLoading(false);
   };
 
-  const handleSecondarySubmit = (e) => {
+  const handleSecondarySubmit = async (e) => {
     e.preventDefault();
     setLoginError('');
     setIsAuthLoading(true);
 
-    // Validate against the dynamic list of gatekeeper accounts
-    const foundUser = gatekeeperUsers.find(
-      (user) => 
-        user.username.trim().toLowerCase() === secondaryUsername.trim().toLowerCase() && 
-        user.password.trim() === secondaryPassword.trim()
-    );
-
-    if (foundUser) {
-      // Success! Create session and grant full view access
-      const newSession = {
-        loginId: foundUser.username,
-        email: email,
-        loginTime: new Date().toISOString()
-      };
-
-      localStorage.setItem('medflow_isLoggedIn', 'true');
-      localStorage.setItem('medflow_authEmail', email);
-      localStorage.setItem('medflow_currentSession', JSON.stringify(newSession));
+    try {
+      const response = await fetch(`${API_URL}/api/users`);
+      let authenticatedUser = null;
       
-      setIsAuthLoading(false);
-      if (onLoginSuccess) {
-        onLoginSuccess(foundUser.username, newSession);
+      if (response.ok) {
+        const users = await response.json();
+        // Check database users
+        authenticatedUser = users.find(
+          (user) => 
+            user.username.trim().toLowerCase() === secondaryUsername.trim().toLowerCase() && 
+            user.password.trim() === secondaryPassword.trim()
+        );
       }
-    } else {
-      setLoginError("Invalid gatekeeper User Name or Password.");
+
+      // Fallback to local gatekeeper users if not found in backend
+      if (!authenticatedUser) {
+        authenticatedUser = gatekeeperUsers.find(
+          (user) => 
+            user.username.trim().toLowerCase() === secondaryUsername.trim().toLowerCase() && 
+            user.password.trim() === secondaryPassword.trim()
+        );
+      }
+
+      if (authenticatedUser) {
+        // Success! Create session and grant full view access
+        const newSession = {
+          loginId: authenticatedUser.username || authenticatedUser.employeeName,
+          email: email,
+          loginTime: new Date().toISOString()
+        };
+
+        localStorage.setItem('medflow_isLoggedIn', 'true');
+        localStorage.setItem('medflow_authEmail', email);
+        localStorage.setItem('medflow_currentSession', JSON.stringify(newSession));
+        
+        setIsAuthLoading(false);
+        if (onLoginSuccess) {
+          onLoginSuccess(authenticatedUser.username || authenticatedUser.employeeName, newSession);
+        }
+      } else {
+        setLoginError("Invalid gatekeeper User Name or Password.");
+        setIsAuthLoading(false);
+      }
+    } catch (err) {
+      setLoginError("Server error verifying user.");
       setIsAuthLoading(false);
     }
   };
@@ -232,14 +255,22 @@ const Login = ({ onLoginSuccess }) => {
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '5px', color: '#64748b', fontWeight: '500' }}>Password</label>
-                <input 
-                  type="password" 
-                  value={password} 
-                  onChange={(e) => setPassword(e.target.value)} 
-                  required 
-                  placeholder="••••••••"
-                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} 
-                />
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    value={password} 
+                    onChange={(e) => setPassword(e.target.value)} 
+                    required 
+                    placeholder="••••••••"
+                    style={{ width: '100%', padding: '10px', paddingRight: '40px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} 
+                  />
+                  <div 
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: '#64748b' }}
+                  >
+                    {showPassword ? <FaEyeSlash /> : <FaEye />}
+                  </div>
+                </div>
               </div>
               <button 
                 type="submit" 
@@ -319,14 +350,22 @@ const Login = ({ onLoginSuccess }) => {
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '5px', color: '#64748b', fontWeight: '500' }}>Password</label>
-                <input 
-                  type="password" 
-                  value={secondaryPassword} 
-                  onChange={(e) => setSecondaryPassword(e.target.value)} 
-                  required 
-                  placeholder="••••"
-                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} 
-                />
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type={showSecondaryPassword ? "text" : "password"} 
+                    value={secondaryPassword} 
+                    onChange={(e) => setSecondaryPassword(e.target.value)} 
+                    required 
+                    placeholder="••••"
+                    style={{ width: '100%', padding: '10px', paddingRight: '40px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} 
+                  />
+                  <div 
+                    onClick={() => setShowSecondaryPassword(!showSecondaryPassword)}
+                    style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: '#64748b' }}
+                  >
+                    {showSecondaryPassword ? <FaEyeSlash /> : <FaEye />}
+                  </div>
+                </div>
               </div>
               <button 
                 type="submit" 
