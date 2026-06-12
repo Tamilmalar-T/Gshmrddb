@@ -3,7 +3,7 @@ import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import FileUpload from './FileUpload';
 import Viewform from './Viewform';
 import Requestform from './Dept.jsx/Requestform';
-import Barcode from './Barcode';
+// import Barcode from './Barcode';
 import Login from './Login';
 import DeptLogin from './DeptLogin';
 import SessionDetails from './SessionDetails';
@@ -433,12 +433,12 @@ function App() {
                   </nav>
 
                   <div className="header-auth">
-                    <button
+                    {/* <button
                       className="view-accounts-btn"
                       onClick={() => navigate('/accounts')}
                     >
                     View Account
-                    </button>
+                    </button> */}
                     {currentSession && (
                       <span className="user-session-badge">
                         <span className="user-session-name">👤<span>{currentSession.loginId}</span></span>
@@ -556,7 +556,7 @@ function App() {
                     <span className="nav-text">Document Uploded List</span>
                     {totalSubmissions > 0 && <span className="badge">{totalSubmissions}</span>}
                   </button>
-                  <button
+                  {/* <button
                     className={`nav-btn ${activeTab === 'export' ? 'active' : ''}`}
                     onClick={() => setActiveTab('export')}
                   >
@@ -566,7 +566,7 @@ function App() {
                       <line x1="12" y1="3" x2="12" y2="15" />
                     </svg>
                     <span className="nav-text">Bar code</span>
-                  </button>
+                  </button> */}
                   <button
                     className={`nav-btn mobile-only-btn ${showNotifications ? 'active' : ''}`}
                     onClick={() => {

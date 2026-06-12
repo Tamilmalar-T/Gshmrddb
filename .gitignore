@@ -11,6 +11,7 @@ credentials.json
 token.json
 code.txt
 
+
 # Uploads directory (user uploaded files)
 Backend/uploads/
 uploads/
