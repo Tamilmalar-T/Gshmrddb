@@ -4,10 +4,6 @@ import { Row, Col } from 'react-bootstrap';
 import './FileUpload.css';
 import { API_URL } from './config';
 import * as XLSX from 'xlsx';
-import * as pdfjsLib from 'pdfjs-dist';
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setRequests, existingRecords = [], showNotifications, setShowNotifications }) {
   const [formData, setFormData] = useState({
@@ -263,88 +259,9 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
     return data;
   };
 
-  const parsePDFTextToFormData = (text) => {
-    const data = {
-      ipNo: '',
-      name: '',
-      age: '',
-      date: new Date().toISOString().split('T')[0],
-      gender: '',
-      recordType: '',
-    };
-
-    const normalizedText = text.replace(/\s+/g, ' ');
-
-    // Match IP No
-    const ipMatch = normalizedText.match(/(?:ip\s*no|ip\s*number|ip|serial|id)[:\s]*([a-zA-Z0-9-]+)/i);
-    if (ipMatch) data.ipNo = ipMatch[1];
-
-    // Match Patient Name
-    const nameMatch = normalizedText.match(/(?:patient\s*name|name\s*of\s*patient|name)[:\s]+([A-Za-z. ]+?)(?=\s*(?:age|sex|gender|date|ip|mr|dr|#|$))/i);
-    if (nameMatch) data.name = nameMatch[1].trim();
-
-    // Match Age
-    const ageMatch = normalizedText.match(/(?:age|years)[:\s]*(\d+)/i);
-    if (ageMatch) data.age = ageMatch[1];
-
-    // Match Gender
-    const genderMatch = normalizedText.match(/(?:gender|sex)[:\s]*(male|female|m|f|other)/i);
-    if (genderMatch) {
-      const g = genderMatch[1].toLowerCase();
-      if (g.startsWith('m')) data.gender = 'Male';
-      else if (g.startsWith('f')) data.gender = 'Female';
-      else data.gender = 'Other';
-    }
-
-    // Match Date
-    const dateMatch = normalizedText.match(/(?:date|discharge\s*date|admission\s*date)[:\s]*([\d]{1,4}[-/.\\][\d]{1,2}[-/.\\][\d]{1,4})/i);
-    if (dateMatch) {
-      const d = new Date(dateMatch[1]);
-      if (!isNaN(d.getTime())) {
-        data.date = d.toISOString().split('T')[0];
-      }
-    }
-
-    // Match Record Type
-    if (/mlc/i.test(normalizedText)) data.recordType = 'MLC Patient';
-    else if (/advice|medical/i.test(normalizedText)) data.recordType = 'Medical Advice';
-    else if (/birth/i.test(normalizedText)) data.recordType = 'Birth';
-    else if (/death/i.test(normalizedText)) data.recordType = 'Death';
-
-    return data;
-  };
-
-  const handleImportPDF = async (file) => {
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      let fullText = '';
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items.map(item => item.str).join(' ');
-        fullText += pageText + ' \n ';
-      }
-      
-      const extractedData = parsePDFTextToFormData(fullText);
-      setFormData(prev => ({ ...prev, ...extractedData }));
-      
-    } catch (err) {
-      console.error("Failed to parse PDF:", err);
-      alert("Failed to extract data from the PDF file. Please enter details manually.");
-    }
-  };
-
-  const handleImportFile = async (e) => {
+  const handleImportExcel = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
-    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-      await handleImportPDF(file);
-      e.target.value = '';
-      return;
-    }
-
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
@@ -565,120 +482,120 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
 
           <div className="header-controls" style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'center' }}>
             {/* Dynamic Notification Bell System */}
-          <div className="notification-bell-container" style={{ position: 'relative', display: 'flex', alignItems: 'center', zIndex: 99 }}>
-            {/* Hidden Excel File Input */}
-            <input
-              type="file"
-              ref={excelInputRef}
-              style={{ display: 'none' }}
-              accept=".xlsx, .xls, .pdf"
-              onChange={handleImportFile}
-            />
+            <div className="notification-bell-container" style={{ position: 'relative', display: 'flex', alignItems: 'center', zIndex: 99 }}>
+              {/* Hidden Excel File Input */}
+              <input
+                type="file"
+                ref={excelInputRef}
+                style={{ display: 'none' }}
+                accept=".xlsx, .xls"
+                onChange={handleImportExcel}
+              />
 
-            {/* Excel Import Button */}
-            <button
-              type="button"
-              className="import-trigger-btn"
-              onClick={() => excelInputRef.current && excelInputRef.current.click()}
-              style={{
-                background: 'transparent',
-                cursor: 'pointer',
-                position: 'relative',
-                padding: '10px',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#64748b',
-                backgroundColor: 'rgba(248, 250, 252, 0.8)',
-                border: '1px solid #e2e8f0',
-                transition: 'all 0.2s ease',
-                width: '48px',
-                height: '48px',
-                marginRight: '8px'
-              }}
-              title="Import Patient Details from Excel or PDF"
-            >
-
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width="24" height="24">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" strokeLinecap="round" strokeLinejoin="round" />
-                <polyline points="7 10 12 15 17 10" strokeLinecap="round" strokeLinejoin="round" />
-                <line x1="12" y1="15" x2="12" y2="3" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-
-            {/* Desktop-only Notification Bell */}
-            <button
-              type="button"
-              className="bell-trigger-btn desktop-only-btn"
-              onClick={() => setShowNotifications(!showNotifications)}
-              style={{
-                background: 'transparent',
-                cursor: 'pointer',
-                position: 'relative',
-                padding: '10px',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: showNotifications ? 'var(--primary)' : '#64748b',
-                backgroundColor: showNotifications ? 'var(--primary-glow, rgba(79, 70, 229, 0.08))' : 'rgba(248, 250, 252, 0.8)',
-                border: '1px solid #e2e8f0',
-                transition: 'all 0.2s ease',
-                width: '48px',
-                height: '48px'
-              }}
-              title="Access Pending Client Requests"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width="24" height="24">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-              </svg>
-              {requests.filter(r => r.status === 'pending').length > 0 && (
-                <span className="bell-badge" style={{
-                  position: 'absolute',
-                  top: '-4px',
-                  right: '-4px',
-                  background: '#ef4444',
-                  color: 'white',
-                  fontSize: '11px',
-                  fontWeight: '800',
-                  borderRadius: '99px',
-                  minWidth: '22px',
-                  height: '22px',
+              {/* Excel Import Button */}
+              <button
+                type="button"
+                className="import-trigger-btn"
+                onClick={() => excelInputRef.current && excelInputRef.current.click()}
+                style={{
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  position: 'relative',
+                  padding: '10px',
+                  borderRadius: '50%',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  border: '2px solid white',
-                  boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)'
-                }}>
-                  {requests.filter(r => r.status === 'pending').length}
-                </span>
-              )}
-            </button>
+                  color: '#64748b',
+                  backgroundColor: 'rgba(248, 250, 252, 0.8)',
+                  border: '1px solid #e2e8f0',
+                  transition: 'all 0.2s ease',
+                  width: '48px',
+                  height: '48px',
+                  marginRight: '8px'
+                }}
+                title="Import Patient Details from Excel"
+              >
 
-          </div>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width="24" height="24">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" strokeLinecap="round" strokeLinejoin="round" />
+                  <polyline points="7 10 12 15 17 10" strokeLinecap="round" strokeLinejoin="round" />
+                  <line x1="12" y1="15" x2="12" y2="3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
 
-          <div className="completeness-indicator" style={{ display: 'flex', alignItems: 'center' }}>
-            <div className="progress-ring-container">
-              <svg className="progress-ring" width="42" height="42">
-                <circle className="progress-ring__circle-bg" strokeWidth="3" fill="transparent" r="18" cx="21" cy="21" />
-                <circle
-                  className="progress-ring__circle"
-                  strokeWidth="3"
-                  strokeDasharray={`${2 * Math.PI * 18}`}
-                  strokeDashoffset={`${2 * Math.PI * 18 - (completeness / 100) * (2 * Math.PI * 18)}`}
-                  strokeLinecap="round"
-                  fill="transparent"
-                  r="18"
-                  cx="21"
-                  cy="21"
-                />
-              </svg>
-              <span className="progress-percentage">{completeness}%</span>
+              {/* Desktop-only Notification Bell */}
+              <button
+                type="button"
+                className="bell-trigger-btn desktop-only-btn"
+                onClick={() => setShowNotifications(!showNotifications)}
+                style={{
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  position: 'relative',
+                  padding: '10px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: showNotifications ? 'var(--primary)' : '#64748b',
+                  backgroundColor: showNotifications ? 'var(--primary-glow, rgba(79, 70, 229, 0.08))' : 'rgba(248, 250, 252, 0.8)',
+                  border: '1px solid #e2e8f0',
+                  transition: 'all 0.2s ease',
+                  width: '48px',
+                  height: '48px'
+                }}
+                title="Access Pending Client Requests"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" width="24" height="24">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                </svg>
+                {requests.filter(r => r.status === 'pending').length > 0 && (
+                  <span className="bell-badge" style={{
+                    position: 'absolute',
+                    top: '-4px',
+                    right: '-4px',
+                    background: '#ef4444',
+                    color: 'white',
+                    fontSize: '11px',
+                    fontWeight: '800',
+                    borderRadius: '99px',
+                    minWidth: '22px',
+                    height: '22px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '2px solid white',
+                    boxShadow: '0 0 8px rgba(239, 68, 68, 0.6)'
+                  }}>
+                    {requests.filter(r => r.status === 'pending').length}
+                  </span>
+                )}
+              </button>
+
             </div>
-            <span className="completeness-label">Complete</span>
-          </div>
+
+            <div className="completeness-indicator" style={{ display: 'flex', alignItems: 'center' }}>
+              <div className="progress-ring-container">
+                <svg className="progress-ring" width="42" height="42">
+                  <circle className="progress-ring__circle-bg" strokeWidth="3" fill="transparent" r="18" cx="21" cy="21" />
+                  <circle
+                    className="progress-ring__circle"
+                    strokeWidth="3"
+                    strokeDasharray={`${2 * Math.PI * 18}`}
+                    strokeDashoffset={`${2 * Math.PI * 18 - (completeness / 100) * (2 * Math.PI * 18)}`}
+                    strokeLinecap="round"
+                    fill="transparent"
+                    r="18"
+                    cx="21"
+                    cy="21"
+                  />
+                </svg>
+                <span className="progress-percentage">{completeness}%</span>
+              </div>
+              <span className="completeness-label">Complete</span>
+            </div>
           </div>
         </div>
 
