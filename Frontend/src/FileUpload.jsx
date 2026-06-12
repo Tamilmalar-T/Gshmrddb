@@ -5,9 +5,9 @@ import './FileUpload.css';
 import { API_URL } from './config';
 import * as XLSX from 'xlsx';
 import * as pdfjsLib from 'pdfjs-dist';
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
-// Use Cloudflare CDN for the worker to avoid Vite build issues with worker files
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setRequests, existingRecords = [], showNotifications, setShowNotifications }) {
   const [formData, setFormData] = useState({
