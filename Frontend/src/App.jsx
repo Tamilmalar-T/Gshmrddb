@@ -305,6 +305,7 @@ function App() {
         <Route path="/*" element={<Login onLoginSuccess={(email, session) => {
           setIsLoggedIn(true);
           setCurrentSession(session);
+          setActiveTab('form');
         }} />} />
       </Routes>
     );
