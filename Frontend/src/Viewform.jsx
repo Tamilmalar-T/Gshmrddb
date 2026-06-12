@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Row, Col } from 'react-bootstrap';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import './Viewform.css';
 
 function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
@@ -131,9 +132,9 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
 
     autoTable(doc, {
       startY: 33,
-      head: [['IP No', 'Patient Name', 'Age', 'Date', 'Type', 'Gender', 'Created By']],
+      head: [['IP NO', 'PATIENT NAME', 'AGE', 'GENDER', 'DISCHARGE DATE', 'DOCUMENT TYPE', 'CREATED BY']],
       body: filteredRecords.map((r) => [
-        r.ipNo || '', r.name || '', r.age || '', formatDateToDDMMYYYY(r.date), r.recordType || '', r.gender || '', r.createdBy || 'System',
+        r.ipNo || '', r.name || '', r.age || '', r.gender || '', formatDateToDDMMYYYY(r.date), r.recordType || '', r.createdBy || 'System',
       ]),
       styles: { fontSize: 9 },
       headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' },
@@ -147,27 +148,34 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
       alert('No logs found to export.');
       return;
     }
-    let html = `
-      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-      <head><meta charset="utf-8" /><style>table { border-collapse: collapse; } th, td { border: 1px solid #cbd5e1; padding: 8px; }</style></head>
-      <body>
-        <h3>Guru Shree MRD - Patient Submissions Log</h3>
-        <table>
-          <thead><tr><th>IP Number</th><th>Patient Name</th><th>Age</th><th>Date</th><th>Type</th><th>Gender</th><th>Created By</th></tr></thead>
-          <tbody>
-            ${filteredRecords.map(r => `<tr><td>${r.ipNo || ''}</td><td>${r.name || ''}</td><td>${r.age || ''}</td><td>${r.date || ''}</td><td>${r.recordType || ''}</td><td>${r.gender || ''}</td><td>${r.createdBy || 'System'}</td></tr>`).join('')}
-          </tbody>
-        </table>
-      </body></html>
-    `;
-    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `patient_records_${new Date().toISOString().split('T')[0]}.xls`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+
+    const data = filteredRecords.map(r => ({
+      "IP NO": r.ipNo || '',
+      "PATIENT NAME": r.name || '',
+      "AGE": r.age || '',
+      "GENDER": r.gender || '',
+      "DISCHARGE DATE": formatDateToDDMMYYYY(r.date),
+      "DOCUMENT TYPE": r.recordType || '',
+      "CREATED BY": r.createdBy || 'System'
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Patient Records");
+    
+    // Set auto-fit column widths
+    const columnWidths = [
+      { wch: 15 }, // IP NO
+      { wch: 30 }, // PATIENT NAME
+      { wch: 10 }, // AGE
+      { wch: 15 }, // GENDER
+      { wch: 20 }, // DISCHARGE DATE
+      { wch: 25 }, // DOCUMENT TYPE
+      { wch: 20 }  // CREATED BY
+    ];
+    worksheet['!cols'] = columnWidths;
+
+    XLSX.writeFile(workbook, `patient_records_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   const handleExportAction = (e) => {
