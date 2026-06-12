@@ -318,16 +318,37 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
     try {
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      let fullText = '';
+      const mapped = [];
+
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
         const pageText = textContent.items.map(item => item.str).join(' ');
-        fullText += pageText + ' \n ';
+        
+        const extractedData = parsePDFTextToFormData(pageText);
+        
+        // Only include if we found at least some meaningful data
+        if (extractedData.name || extractedData.ipNo) {
+          mapped.push({
+            id: i - 1,
+            original: { 'Source': `PDF Page ${i}` },
+            mapped: extractedData
+          });
+        }
       }
       
-      const extractedData = parsePDFTextToFormData(fullText);
-      setFormData(prev => ({ ...prev, ...extractedData }));
+      if (mapped.length === 0) {
+        alert("No valid patient data found in the PDF.");
+        return;
+      }
+
+      // Always show modal for PDF to allow verification, or behave like excel
+      setImportedRows(mapped);
+      setImportFileName(file.name);
+      setDuplicateIds(new Set());
+      setRemovedIds(new Set());
+      setLookupDone(false);
+      setShowImportModal(true);
       
     } catch (err) {
       console.error("Failed to parse PDF:", err);
