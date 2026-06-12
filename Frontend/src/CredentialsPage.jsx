@@ -238,7 +238,7 @@ const CredentialsPage = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.9rem', marginTop: '5px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #e2e8f0', paddingBottom: '6px' }}>
                     <span style={{ color: '#64748b' }}>Email:</span>
-                    <strong style={{ fontFamily: 'monospace', color: '#0f172a' }}>tamilmalar520d@gmail.com</strong>
+                    <strong style={{ fontFamily: 'monospace', color: '#0f172a' }}>{localStorage.getItem('medflow_authEmail') || 'tamilmalar520d@gmail.com'}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #e2e8f0', paddingBottom: '6px' }}>
                     <span style={{ color: '#64748b' }}>Password:</span>
