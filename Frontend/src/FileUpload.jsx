@@ -474,6 +474,16 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
     setRemovedIds(prev => new Set([...prev, rowId]));
   };
 
+  // Edit a field in a specific row
+  const handleEditImportedRow = (rowId, field, value) => {
+    setImportedRows(prev => prev.map(row => {
+      if (row.id === rowId) {
+        return { ...row, mapped: { ...row.mapped, [field]: value } };
+      }
+      return row;
+    }));
+  };
+
   const handleImportAll = async () => {
     const activeSession = JSON.parse(localStorage.getItem('medflow_currentSession') || '{}');
     const loggedInUser = activeSession.loginId || 'System';
@@ -1261,52 +1271,77 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
                             borderLeft: isDupe ? '4px solid #ef4444' : '4px solid transparent',
                           }}
                         >
-                          <td style={{ padding: '12px', fontSize: '0.9rem', fontWeight: '600', color: isDupe ? '#b91c1c' : '#0f172a' }}>
-                            {row.mapped.ipNo || '-'}
+                          <td style={{ padding: '8px', fontSize: '0.9rem', fontWeight: '600', color: isDupe ? '#b91c1c' : '#0f172a' }}>
+                            <input 
+                              type="text" 
+                              value={row.mapped.ipNo || ''} 
+                              onChange={(e) => handleEditImportedRow(row.id, 'ipNo', e.target.value)}
+                              style={{ width: '80px', padding: '4px', border: '1px solid transparent', borderRadius: '4px', background: 'transparent', outline: 'none' }}
+                              onFocus={(e) => e.target.style.border = '1px solid #cbd5e1'}
+                              onBlur={(e) => e.target.style.border = '1px solid transparent'}
+                            />
                             {isDupe && (
-                              <span style={{
-                                display: 'inline-block',
-                                marginLeft: '6px',
-                                padding: '1px 6px',
-                                background: '#fee2e2',
-                                color: '#dc2626',
-                                borderRadius: '4px',
-                                fontSize: '0.7rem',
-                                fontWeight: '800',
-                                verticalAlign: 'middle'
-                              }}>DUPLICATE</span>
+                              <span style={{ display: 'inline-block', marginLeft: '6px', padding: '1px 6px', background: '#fee2e2', color: '#dc2626', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '800', verticalAlign: 'middle' }}>DUPLICATE</span>
                             )}
                           </td>
-                          <td style={{ padding: '12px', fontSize: '0.9rem', color: isDupe ? '#b91c1c' : '#334155' }}>{row.mapped.name || '-'}</td>
-                          <td style={{ padding: '12px', fontSize: '0.9rem', color: isDupe ? '#b91c1c' : '#334155' }}>{row.mapped.age || '-'}</td>
-                          <td style={{ padding: '12px', fontSize: '0.9rem' }}>
-                            {row.mapped.gender ? (
-                              <span style={{
-                                padding: '4px 8px',
-                                borderRadius: '6px',
-                                fontSize: '0.75rem',
-                                fontWeight: '600',
-                                backgroundColor: row.mapped.gender === 'Male' ? '#e0f2fe' : (row.mapped.gender === 'Female' ? '#fce7f3' : '#f1f5f9'),
-                                color: row.mapped.gender === 'Male' ? '#0369a1' : (row.mapped.gender === 'Female' ? '#be185d' : '#475569')
-                              }}>
-                                {row.mapped.gender}
-                              </span>
-                            ) : '-'}
+                          <td style={{ padding: '8px' }}>
+                            <input 
+                              type="text" 
+                              value={row.mapped.name || ''} 
+                              onChange={(e) => handleEditImportedRow(row.id, 'name', e.target.value)}
+                              style={{ width: '100%', padding: '4px', border: '1px solid transparent', borderRadius: '4px', background: 'transparent', outline: 'none', color: isDupe ? '#b91c1c' : '#334155' }}
+                              onFocus={(e) => e.target.style.border = '1px solid #cbd5e1'}
+                              onBlur={(e) => e.target.style.border = '1px solid transparent'}
+                            />
                           </td>
-                          <td style={{ padding: '12px', fontSize: '0.9rem', color: isDupe ? '#b91c1c' : '#334155' }}>{row.mapped.date || '-'}</td>
-                          <td style={{ padding: '12px', fontSize: '0.9rem' }}>
-                            {row.mapped.recordType ? (
-                              <span style={{
-                                padding: '4px 8px',
-                                borderRadius: '6px',
-                                fontSize: '0.75rem',
-                                fontWeight: '600',
-                                backgroundColor: isDupe ? '#fecaca' : '#e0e7ff',
-                                color: isDupe ? '#dc2626' : '#4338ca'
-                              }}>
-                                {row.mapped.recordType}
-                              </span>
-                            ) : '-'}
+                          <td style={{ padding: '8px' }}>
+                            <input 
+                              type="text" 
+                              value={row.mapped.age || ''} 
+                              onChange={(e) => handleEditImportedRow(row.id, 'age', e.target.value)}
+                              style={{ width: '50px', padding: '4px', border: '1px solid transparent', borderRadius: '4px', background: 'transparent', outline: 'none', color: isDupe ? '#b91c1c' : '#334155' }}
+                              onFocus={(e) => e.target.style.border = '1px solid #cbd5e1'}
+                              onBlur={(e) => e.target.style.border = '1px solid transparent'}
+                            />
+                          </td>
+                          <td style={{ padding: '8px' }}>
+                            <select 
+                              value={row.mapped.gender || ''} 
+                              onChange={(e) => handleEditImportedRow(row.id, 'gender', e.target.value)}
+                              style={{ padding: '4px', border: '1px solid transparent', borderRadius: '4px', background: 'transparent', outline: 'none', fontSize: '0.85rem' }}
+                              onFocus={(e) => e.target.style.border = '1px solid #cbd5e1'}
+                              onBlur={(e) => e.target.style.border = '1px solid transparent'}
+                            >
+                              <option value="">-</option>
+                              <option value="Male">Male</option>
+                              <option value="Female">Female</option>
+                              <option value="Other">Other</option>
+                            </select>
+                          </td>
+                          <td style={{ padding: '8px' }}>
+                            <input 
+                              type="date" 
+                              value={row.mapped.date || ''} 
+                              onChange={(e) => handleEditImportedRow(row.id, 'date', e.target.value)}
+                              style={{ padding: '4px', border: '1px solid transparent', borderRadius: '4px', background: 'transparent', outline: 'none', color: isDupe ? '#b91c1c' : '#334155', fontSize: '0.85rem' }}
+                              onFocus={(e) => e.target.style.border = '1px solid #cbd5e1'}
+                              onBlur={(e) => e.target.style.border = '1px solid transparent'}
+                            />
+                          </td>
+                          <td style={{ padding: '8px' }}>
+                            <select 
+                              value={row.mapped.recordType || ''} 
+                              onChange={(e) => handleEditImportedRow(row.id, 'recordType', e.target.value)}
+                              style={{ padding: '4px', border: '1px solid transparent', borderRadius: '4px', background: 'transparent', outline: 'none', fontSize: '0.85rem' }}
+                              onFocus={(e) => e.target.style.border = '1px solid #cbd5e1'}
+                              onBlur={(e) => e.target.style.border = '1px solid transparent'}
+                            >
+                              <option value="">-</option>
+                              <option value="MLC Patient">MLC Patient</option>
+                              <option value="Medical Advice">Medical Advice</option>
+                              <option value="Birth">Birth</option>
+                              <option value="Death">Death</option>
+                            </select>
                           </td>
                           <td style={{ padding: '12px', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                             <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center' }}>
