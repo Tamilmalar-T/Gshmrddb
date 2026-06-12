@@ -11,6 +11,7 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
   const [filterValue, setFilterValue] = useState('All');
   const [isEditing, setIsEditing] = useState(false);
   const [newFiles, setNewFiles] = useState([]);
+  const [filesToDelete, setFilesToDelete] = useState([]);
   const [keepOriginal, setKeepOriginal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
