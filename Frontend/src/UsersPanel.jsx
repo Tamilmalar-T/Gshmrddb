@@ -102,6 +102,21 @@ export default function UsersPanel() {
     return Object.keys(e).length === 0;
   };
 
+  const syncGatekeeper = (username, password) => {
+    try {
+      const savedGatekeepers = JSON.parse(localStorage.getItem('medflow_gatekeeper_users') || '[{"username":"sadhana","password":"0633"}]');
+      const index = savedGatekeepers.findIndex(g => g.username.toLowerCase() === username.toLowerCase());
+      if (index === -1) {
+        savedGatekeepers.push({ username, password });
+      } else {
+        savedGatekeepers[index].password = password;
+      }
+      localStorage.setItem('medflow_gatekeeper_users', JSON.stringify(savedGatekeepers));
+    } catch (e) {
+      console.error("Failed to sync gatekeeper", e);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
@@ -124,6 +139,7 @@ export default function UsersPanel() {
         if (!res.ok) throw new Error("Failed to add user");
         const saved = await res.json();
         setUsers([saved, ...users]);
+        syncGatekeeper(form.username.trim(), form.password.trim());
       } else {
         const u = users[editIndex];
         const payload = { ...u, ...form, photo: photoPreview, updatedBy: currentUser, updatedOn: timestamp };
@@ -135,6 +151,7 @@ export default function UsersPanel() {
         if (!res.ok) throw new Error("Failed to update user");
         const updated = await res.json();
         setUsers(users.map((user, i) => i === editIndex ? updated : user));
+        syncGatekeeper(form.username.trim(), form.password.trim());
       }
       closeForm();
     } catch (err) {
