@@ -615,6 +615,43 @@ app.post("/api/patients/bulk", async (req, res) => {
           fileUrl: ""
         }))
       );
+      // Fire-and-forget email notification
+      const emailHtml = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+          <h2 style="color: #4f46e5;">Bulk Import Successful</h2>
+          <p><strong>${savedPatients.length}</strong> patient record(s) have been successfully imported into the database from an Excel/PDF upload.</p>
+          <p><strong>Imported By:</strong> ${savedPatients[0]?.createdBy || 'System'}</p>
+          <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+          <br/>
+          <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%; font-size: 14px;">
+            <thead>
+              <tr style="background-color: #f8fafc; color: #475569; text-align: left;">
+                <th>IP No</th>
+                <th>Patient Name</th>
+                <th>Age</th>
+                <th>Document Type</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${savedPatients.map(p => `
+                <tr>
+                  <td>${p.ipNo || '-'}</td>
+                  <td>${p.name || '-'}</td>
+                  <td>${p.age || '-'}</td>
+                  <td>${p.recordType || '-'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <p style="margin-top: 20px; font-size: 12px; color: #94a3b8;">This is an automated notification from the MedFlow Clinical Portal.</p>
+        </div>
+      `;
+
+      sendEmail({
+        to: process.env.GMAIL_USER,
+        subject: `[MedFlow] Bulk Import - ${savedPatients.length} Patient Record(s) Added`,
+        html: emailHtml
+      }).catch(err => console.error("[BULK IMPORT EMAIL] Failed to send:", err));
     }
 
     console.log(`[BULK IMPORT] Inserted: ${savedPatients.length}, Skipped (duplicates): ${skippedPatients.length}`);
