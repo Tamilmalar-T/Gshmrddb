@@ -16,11 +16,13 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
   const [keepOriginal, setKeepOriginal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedIds, setSelectedIds] = useState([]);
   const itemsPerPage = 10;
   
   // Reset page when search or filters change
   useEffect(() => {
     setCurrentPage(1);
+    setSelectedIds([]);
   }, [searchTerm, filterValue, filterCategory]);
 
   const formatDateToDDMMYYYY = (dateStr) => {
@@ -465,6 +467,26 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
           </select>
         </div>
       </div>
+
+      {selectedIds.length > 0 && (
+        <div style={{ padding: '10px 15px', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: '8px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ color: '#991b1b', fontWeight: '600' }}>{selectedIds.length} record(s) selected</span>
+          <button 
+            onClick={async () => {
+              if (window.confirm(`Are you sure you want to delete ${selectedIds.length} records? This action cannot be undone.`)) {
+                for (const id of selectedIds) {
+                  await onDeleteRecord(id);
+                }
+                setSelectedIds([]);
+              }
+            }}
+            style={{ background: '#ef4444', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
+          >
+            🗑️ Delete Selected
+          </button>
+        </div>
+      )}
+
       {/* Main Records Presentation */}
       {groupedRecords.length === 0 ? (
         <div className="empty-state">
@@ -486,6 +508,19 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
             <table className="submissions-table">
               <thead>
                 <tr>
+                  <th style={{ width: '40px', textAlign: 'center' }}>
+                    <input 
+                      type="checkbox" 
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedIds(paginatedRecords.map(r => r.id || r._id));
+                        } else {
+                          setSelectedIds([]);
+                        }
+                      }}
+                      checked={paginatedRecords.length > 0 && selectedIds.length === paginatedRecords.length}
+                    />
+                  </th>
                   <th>IP No</th>
                   <th>Patient Name</th>
                   <th>Age</th>
@@ -501,6 +536,22 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
               <tbody>
                 {paginatedRecords.map((group) => (
                   <tr key={group.id || group._id} className="record-row" style={groupedRecords.filter(r => r.ipNo === group.ipNo).length > 1 ? { borderLeft: '4px solid #ef4444' } : {}}>
+                    
+                    {/* Checkbox column */}
+                    <td style={{ textAlign: 'center' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={selectedIds.includes(group.id || group._id)}
+                        onChange={(e) => {
+                          const id = group.id || group._id;
+                          if (e.target.checked) {
+                            setSelectedIds(prev => [...prev, id]);
+                          } else {
+                            setSelectedIds(prev => prev.filter(i => i !== id));
+                          }
+                        }}
+                      />
+                    </td>
 
                     {/* IP column */}
                     <td>
