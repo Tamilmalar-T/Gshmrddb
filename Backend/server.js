@@ -1115,37 +1115,52 @@ const otpStore = new Map();
 
 app.post("/api/auth/login", async (req, res) => {
   const { email, password } = req.body;
-  if (email === "gshmrd2627@gmail.com" && password === "123") {
-    const otp = Math.floor(1000 + Math.random() * 9000).toString();
-    const expiresAt = Date.now() + 5 * 60 * 1000;
-    otpStore.set(email, { otp, expiresAt });
+  
+  try {
+    // Check for hardcoded admin account OR check against MongoDB UserProfile collection
+    const isAdmin = (email === "gshmrd2627@gmail.com" && password === "123");
+    
+    // Find user in database if not the hardcoded admin
+    let dbUser = null;
+    if (!isAdmin) {
+      dbUser = await UserProfile.findOne({ email, password });
+    }
 
-    // Send OTP email asynchronously in the background so it doesn't block the login response
-    sendEmail({
-      to: email,
-      subject: `Your MedFlow Login OTP`,
-      html: `<div style="font-family: sans-serif; max-width: 400px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; text-align: center;">
-               <h2 style="color: #4f46e5;">MedFlow Login OTP</h2>
-               <p>Your 4-digit verification code is:</p>
-               <h1 style="letter-spacing: 4px; color: #1e293b; background: #f8fafc; padding: 10px; border-radius: 8px;">${otp}</h1>
-               <p style="color: #64748b; font-size: 14px;">This code will expire in 5 minutes.</p>
-             </div>`,
-    }).then(() => {
-      console.log(`[AUTH] Login OTP email sent successfully to ${email}`);
-    }).catch(err => {
-      console.error("[AUTH] Failed to send login OTP email in background:", err.message);
-    });
+    if (isAdmin || dbUser) {
+      const otp = Math.floor(1000 + Math.random() * 9000).toString();
+      const expiresAt = Date.now() + 5 * 60 * 1000;
+      otpStore.set(email, { otp, expiresAt, role: isAdmin ? "Admin" : dbUser.userType });
 
-    console.log(`\n🔑 [SANDBOX BYPASS] Generated OTP code is: ${otp}. You can also use the default sandbox bypass code 9999.\n`);
+      // Send OTP email asynchronously in the background so it doesn't block the login response
+      sendEmail({
+        to: email,
+        subject: `Your MedFlow Login OTP`,
+        html: `<div style="font-family: sans-serif; max-width: 400px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; text-align: center;">
+                 <h2 style="color: #4f46e5;">MedFlow Login OTP</h2>
+                 <p>Your 4-digit verification code is:</p>
+                 <h1 style="letter-spacing: 4px; color: #1e293b; background: #f8fafc; padding: 10px; border-radius: 8px;">${otp}</h1>
+                 <p style="color: #64748b; font-size: 14px;">This code will expire in 5 minutes.</p>
+               </div>`,
+      }).then(() => {
+        console.log(`[AUTH] Login OTP email sent successfully to ${email}`);
+      }).catch(err => {
+        console.error("[AUTH] Failed to send login OTP email in background:", err.message);
+      });
 
-    // Instantly return the OTP code in the response so the user gets it immediately
-    res.json({
-      success: true,
-      message: "OTP generated successfully",
-      otp: otp
-    });
-  } else {
-    res.status(401).json({ success: false, message: "Invalid credentials" });
+      console.log(`\n🔑 [SANDBOX BYPASS] Generated OTP code for ${email} is: ${otp}. You can also use the default sandbox bypass code 9999.\n`);
+
+      // Instantly return the OTP code in the response so the user gets it immediately
+      res.json({
+        success: true,
+        message: "OTP generated successfully",
+        otp: otp
+      });
+    } else {
+      res.status(401).json({ success: false, message: "Invalid credentials" });
+    }
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({ success: false, message: "Server error during login" });
   }
 });
 

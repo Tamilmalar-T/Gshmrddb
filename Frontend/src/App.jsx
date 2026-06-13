@@ -280,9 +280,9 @@ function App() {
       clearTimeout(timeoutId);
       if (isLoggedIn || isDeptLoggedIn) {
         timeoutId = setTimeout(() => {
-          alert("You have been logged out automatically due to 15 minutes of inactivity.");
           if (isLoggedIn) latestLogout.current(true);
           if (isDeptLoggedIn) latestDeptLogout.current();
+          setTimeout(() => alert("You have been logged out automatically due to 15 minutes of inactivity."), 100);
         }, 15 * 60 * 1000); // 15 minutes
       }
     };
