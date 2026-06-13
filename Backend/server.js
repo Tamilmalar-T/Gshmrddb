@@ -1134,7 +1134,7 @@ app.post("/api/auth/login", async (req, res) => {
       // Send OTP email asynchronously in the background so it doesn't block the login response
       sendEmail({
         to: email,
-        subject: `Your MedFlow Login OTP`,
+        subject: `Your MedFlow Login OTP - ${new Date().toLocaleTimeString()}`,
         html: `<div style="font-family: sans-serif; max-width: 400px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; text-align: center;">
                  <h2 style="color: #4f46e5;">MedFlow Login OTP</h2>
                  <p>Your 4-digit verification code is:</p>
