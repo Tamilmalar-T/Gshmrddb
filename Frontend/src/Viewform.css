@@ -373,10 +373,11 @@
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   z-index: 100;
   padding: 1.5rem;
+  padding-top: 1vh;
 }
 
 /* Detail profile card modal pop */
@@ -385,7 +386,7 @@
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 16px;
   padding: 0.75rem 1rem;
-  max-width: 680px;
+  max-width: 850px;
   width: 100%;
   position: relative;
   box-shadow: 0 15px 30px -10px rgba(15, 23, 42, 0.12);
@@ -452,9 +453,7 @@
 
 /* Modal details grid */
 .patient-card-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
+  padding: 0.25rem 0;
 }
 
 .grid-item {
@@ -655,11 +654,6 @@
 
   .patient-card-modal {
     padding: 1rem;
-  }
-
-  .patient-card-grid {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
   }
 }
 

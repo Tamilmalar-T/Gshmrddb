@@ -94,6 +94,19 @@ const userTypeSchema = new mongoose.Schema({
   updatedOn: String,
 });
 const UserType = mongoose.model("UserType", userTypeSchema);
+
+const activeSessionSchema = new mongoose.Schema({
+  sessionId: { type: String, required: true, unique: true },
+  email: String,
+  loginId: String,
+  role: String,
+  loginTime: { type: Date, default: Date.now },
+  deviceInfo: String,
+  ipAddress: String,
+  status: { type: String, default: "active" }
+});
+const ActiveSession = mongoose.model("ActiveSession", activeSessionSchema);
+
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
@@ -1181,7 +1194,24 @@ app.post("/api/auth/verify-otp", (req, res) => {
 
   if (String(storedData.otp).trim() === String(otp).trim() || String(otp).trim() === "9999") {
     otpStore.delete(email);
-    res.json({ success: true, message: "Login successful" });
+    
+    // Create Active Session
+    const sessionId = "sess_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+    const newSession = new ActiveSession({
+      sessionId,
+      email: email,
+      loginId: storedData.role === "Admin" ? "Admin" : email,
+      role: storedData.role,
+      deviceInfo: req.headers['user-agent'] || 'Unknown Device',
+      ipAddress: req.ip || req.connection.remoteAddress
+    });
+    
+    newSession.save().then(() => {
+      res.json({ success: true, message: "Login successful", sessionId });
+    }).catch(err => {
+      console.error("Session creation error:", err);
+      res.json({ success: true, message: "Login successful (session unrecorded)", sessionId });
+    });
   } else {
     res.status(401).json({ success: false, message: "Invalid OTP" });
   }
@@ -1198,15 +1228,55 @@ app.post("/api/auth/dept-login", (req, res) => {
   const expectedPassword = doctorPasswords.get(doctorName) || "123";
   
   if (password === expectedPassword) {
-    res.json({
-      success: true,
-      message: "Department login successful",
-      doctorName,
-      dept,
-      loginTime: new Date().toISOString()
+    const sessionId = "sess_dept_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+    const newSession = new ActiveSession({
+      sessionId,
+      email: `${doctorName}@department.local`,
+      loginId: doctorName,
+      role: `Dept: ${dept}`,
+      deviceInfo: req.headers['user-agent'] || 'Unknown Device',
+      ipAddress: req.ip || req.connection.remoteAddress
+    });
+    
+    newSession.save().then(() => {
+      res.json({
+        success: true,
+        message: "Department login successful",
+        doctorName,
+        dept,
+        loginTime: new Date().toISOString(),
+        sessionId
+      });
+    }).catch(err => {
+      console.error("Session creation error:", err);
+      res.json({
+        success: true,
+        message: "Department login successful",
+        doctorName,
+        dept,
+        loginTime: new Date().toISOString(),
+        sessionId
+      });
     });
   } else {
     res.status(401).json({ success: false, message: "Invalid department password" });
+  }
+});
+
+app.post("/api/auth/logout", async (req, res) => {
+  const { sessionId } = req.body;
+  if (sessionId) {
+    await ActiveSession.deleteOne({ sessionId });
+  }
+  res.json({ success: true, message: "Logged out globally" });
+});
+
+app.get("/api/sessions/live", async (req, res) => {
+  try {
+    const sessions = await ActiveSession.find().sort({ loginTime: -1 });
+    res.json(sessions);
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Error fetching sessions" });
   }
 });
 

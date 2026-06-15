@@ -5,13 +5,13 @@ import { Container, Row, Col } from 'react-bootstrap';
 const CredentialsPage = () => {
   const navigate = useNavigate();
 
-  // Stateful gatekeeper array synchronized with localStorage
-  const [gatekeepers, setGatekeepers] = useState(() => {
-    const list = JSON.parse(localStorage.getItem('medflow_gatekeeper_users') || '[]');
+  // Stateful user array synchronized with localStorage
+  const [users, setUsers] = useState(() => {
+    const list = JSON.parse(localStorage.getItem('medflow_authorized_users') || '[]');
     // Ensure sadhana default exists
     if (!list.some(u => u.username === 'sadhana')) {
       list.push({ username: 'sadhana', password: '0633' });
-      localStorage.setItem('medflow_gatekeeper_users', JSON.stringify(list));
+      localStorage.setItem('medflow_authorized_users', JSON.stringify(list));
     }
     return list;
   });
@@ -30,7 +30,7 @@ const CredentialsPage = () => {
     return list;
   });
 
-  // New Gatekeeper form inputs
+  // New User form inputs
   const [newGateUsername, setNewGateUsername] = useState('');
   const [newGatePassword, setNewGatePassword] = useState('');
 
@@ -39,8 +39,22 @@ const CredentialsPage = () => {
   const [newDocDept, setNewDocDept] = useState('Cardiology');
   const [newDocPass, setNewDocPass] = useState('123');
 
-  // Add a new gatekeeper user
-  const handleAddGatekeeper = (e) => {
+  // Primary Email Password state
+  const [primaryPassword, setPrimaryPassword] = useState(() => {
+    return localStorage.getItem('medflow_primary_password') || '123';
+  });
+  const [isEditingPrimary, setIsEditingPrimary] = useState(false);
+  const [newPrimaryPassword, setNewPrimaryPassword] = useState('');
+
+  const handleSavePrimaryPassword = () => {
+    if (newPrimaryPassword.trim() === '') return;
+    setPrimaryPassword(newPrimaryPassword);
+    localStorage.setItem('medflow_primary_password', newPrimaryPassword);
+    setIsEditingPrimary(false);
+  };
+
+  // Add a new user
+  const handleAddUser = (e) => {
     e.preventDefault();
     if (!newGateUsername.trim() || !newGatePassword.trim()) {
       alert('Please fill in both username and password fields.');
@@ -49,27 +63,27 @@ const CredentialsPage = () => {
     const usernameClean = newGateUsername.trim();
     const passwordClean = newGatePassword.trim();
 
-    if (gatekeepers.some(u => u.username.toLowerCase() === usernameClean.toLowerCase())) {
+    if (users.some(u => u.username.toLowerCase() === usernameClean.toLowerCase())) {
       alert('This username already exists!');
       return;
     }
 
-    const updated = [...gatekeepers, { username: usernameClean, password: passwordClean }];
-    localStorage.setItem('medflow_gatekeeper_users', JSON.stringify(updated));
-    setGatekeepers(updated);
+    const updated = [...users, { username: usernameClean, password: passwordClean }];
+    localStorage.setItem('medflow_authorized_users', JSON.stringify(updated));
+    setUsers(updated);
     setNewGateUsername('');
     setNewGatePassword('');
   };
 
-  // Delete a gatekeeper user (cannot delete saddhana)
-  const handleDeleteGatekeeper = (username) => {
+  // Delete a user user (cannot delete saddhana)
+  const handleDeleteUser = (username) => {
     if (username === 'sadhana') {
-      alert('Cannot delete default gatekeeper!');
+      alert('Cannot delete default user!');
       return;
     }
-    const updated = gatekeepers.filter(u => u.username !== username);
-    localStorage.setItem('medflow_gatekeeper_users', JSON.stringify(updated));
-    setGatekeepers(updated);
+    const updated = users.filter(u => u.username !== username);
+    localStorage.setItem('medflow_authorized_users', JSON.stringify(updated));
+    setUsers(updated);
   };
 
   // Add a new clinical doctor
@@ -102,7 +116,7 @@ const CredentialsPage = () => {
   };
 
   // Direct automatic logins for the developer sandbox
-  const handleGatekeeperLoginDirect = (username, password) => {
+  const handleUserLoginDirect = (username, password) => {
     const newSession = {
       loginId: username,
       email: 'tamilmalar520d@gmail.com',
@@ -122,7 +136,7 @@ const CredentialsPage = () => {
   };
 
   const handleDoctorLoginDirect = (doctorName, dept, password) => {
-    // 1. Establish outer gatekeeper session
+    // 1. Establish outer user session
     const newSession = {
       loginId: doctorName,
       email: 'tamilmalar520d@gmail.com',
@@ -145,7 +159,7 @@ const CredentialsPage = () => {
     window.location.reload();
   };
 
-  const additionalGatekeepers = gatekeepers.filter(u => u.username !== 'sadhana');
+  const additionalUsers = users.filter(u => u.username !== 'sadhana');
 
   return (
     <Container fluid className="p-0" style={{
@@ -240,9 +254,25 @@ const CredentialsPage = () => {
                     <span style={{ color: '#64748b' }}>Email:</span>
                     <strong style={{ fontFamily: 'monospace', color: '#0f172a' }}>{localStorage.getItem('medflow_authEmail') || 'tamilmalar520d@gmail.com'}</strong>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #e2e8f0', paddingBottom: '6px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #e2e8f0', paddingBottom: '6px', alignItems: 'center' }}>
                     <span style={{ color: '#64748b' }}>Password:</span>
-                    <strong style={{ fontFamily: 'monospace', color: '#4f46e5' }}>123</strong>
+                    {isEditingPrimary ? (
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        <input
+                          type="text"
+                          value={newPrimaryPassword}
+                          onChange={(e) => setNewPrimaryPassword(e.target.value)}
+                          style={{ width: '80px', padding: '2px 4px', fontSize: '0.85rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                        />
+                        <button onClick={handleSavePrimaryPassword} style={{ padding: '2px 6px', fontSize: '0.75rem', background: '#10b981', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Save</button>
+                        <button onClick={() => setIsEditingPrimary(false)} style={{ padding: '2px 6px', fontSize: '0.75rem', background: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Cancel</button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <strong style={{ fontFamily: 'monospace', color: '#4f46e5' }}>{primaryPassword}</strong>
+                        <button onClick={() => { setIsEditingPrimary(true); setNewPrimaryPassword(primaryPassword); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem', opacity: 0.6 }} title="Change Password">✏️</button>
+                      </div>
+                    )}
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: '#64748b' }}>OTP Bypass Code:</span>
@@ -252,7 +282,7 @@ const CredentialsPage = () => {
               </div>
               </Col>
 
-              {/* Secondary Gatekeeper Card */}
+              {/* Secondary User Card */}
               <Col lg={6}>
                 <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '18px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -272,7 +302,7 @@ const CredentialsPage = () => {
                     <strong style={{ fontFamily: 'monospace', color: '#4f46e5' }}>0633</strong>
                   </div>
                   
-                  {/* Dynamic Gatekeeper Accounts */}
+                  {/* Dynamic User Accounts */}
                   <div style={{ marginTop: '5px' }}>
                     <span style={{ color: '#64748b', fontSize: '0.75rem', display: 'block', marginBottom: '6px', fontWeight: '700' }}>Registered staff database:</span>
                     
@@ -282,7 +312,7 @@ const CredentialsPage = () => {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <strong style={{ fontFamily: 'monospace', color: '#4f46e5' }}>0633</strong>
                         <button 
-                          onClick={() => handleGatekeeperLoginDirect('sadhana', '0633')}
+                          onClick={() => handleUserLoginDirect('sadhana', '0633')}
                           style={{
                             padding: '3px 8px',
                             background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
@@ -301,14 +331,20 @@ const CredentialsPage = () => {
                       </div>
                     </div>
 
-                    {/* Render additional added staff gatekeepers with delete option */}
-                    {additionalGatekeepers.map((u, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', padding: '4px 0', borderBottom: '1px dotted #e2e8f0' }}>
-                        <span style={{ color: '#0f172a' }}>👤 {u.username}</span>
+                    {additionalUsers.map((u, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', padding: '6px 0', borderBottom: '1px dotted #e2e8f0' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ color: '#0f172a', fontWeight: '600' }}>👤 {u.username}</span>
+                          {(u.designation || u.userType) && (
+                            <span style={{ color: '#64748b', fontSize: '0.7rem' }}>
+                              {u.designation || 'Staff'} • {u.userType || 'User'}
+                            </span>
+                          )}
+                        </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <strong style={{ fontFamily: 'monospace', color: '#4f46e5' }}>{u.password}</strong>
                           <button 
-                            onClick={() => handleGatekeeperLoginDirect(u.username, u.password)}
+                            onClick={() => handleUserLoginDirect(u.username, u.password)}
                             style={{
                               padding: '3px 8px',
                               background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
@@ -325,7 +361,7 @@ const CredentialsPage = () => {
                             🔑 Login
                           </button>
                           <button 
-                            onClick={() => handleDeleteGatekeeper(u.username)}
+                            onClick={() => handleDeleteUser(u.username)}
                             style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0 4px', fontSize: '0.85rem' }}
                             title="Delete User"
                           >
@@ -336,8 +372,8 @@ const CredentialsPage = () => {
                     ))}
                   </div>
 
-                  {/* Add New Gatekeeper Form Inline */}
-                  <form onSubmit={handleAddGatekeeper} style={{ marginTop: '12px', padding: '10px', background: '#f0fdf4', border: '1px dashed #bbf7d0', borderRadius: '12px' }}>
+                  {/* Add New User Form Inline */}
+                  <form onSubmit={handleAddUser} style={{ marginTop: '12px', padding: '10px', background: '#f0fdf4', border: '1px dashed #bbf7d0', borderRadius: '12px' }}>
                     <span style={{ color: '#16a34a', fontWeight: '700', fontSize: '0.75rem', display: 'block', marginBottom: '8px' }}>➕ Register New Staff :</span>
                     <div style={{ display: 'flex', gap: '6px' }}>
                       <input 

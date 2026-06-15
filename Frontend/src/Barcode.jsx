@@ -2,29 +2,21 @@ import { useState, useRef } from 'react';
 import { BrowserMultiFormatReader } from '@zxing/browser';
 import { DecodeHintType } from '@zxing/library';
 import { API_URL } from './config';
+import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import './Barcode.css';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 function Barcode() {
   const [isScanning, setIsScanning] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [scannedResults, setScannedResults] = useState([]);
   const [selectedFiles, setSelectedFiles] = useState([]);
-  const [manualCode, setManualCode] = useState("");
+
   const fileInputRef = useRef(null);
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      if (manualCode.trim()) {
-        const codes = manualCode.trim().split(/[\s,]+/).filter(c => c);
-        if (codes.length > 0) {
-          setScannedResults(prev => [...prev, [...new Set(codes)]]);
-        }
-        setManualCode("");
-      }
-    }
-  };
-
+  
   const handleBarcodeUpload = async (event) => {
     const files = Array.from(event.target.files);
     if (!files || files.length === 0) return;
@@ -38,23 +30,12 @@ function Barcode() {
     const newResults = [];
     let errorCount = 0;
 
-    for (const file of files) {
-      try {
-        const imageUrl = URL.createObjectURL(file);
+    const performScan = async (sourceElement, canvas, width, height) => {
         let foundCodes = false;
-
-        // Try the native BarcodeDetector API first as it can find multiple codes in one image
         if ('BarcodeDetector' in window) {
           try {
-            // Do not specify formats explicitly to avoid crashing if the OS doesn't support a specific one
             const barcodeDetector = new window.BarcodeDetector();
-            const img = new Image();
-            img.src = imageUrl;
-            await new Promise((resolve) => {
-              img.onload = resolve;
-              img.onerror = resolve;
-            });
-            const barcodes = await barcodeDetector.detect(img);
+            const barcodes = await barcodeDetector.detect(sourceElement);
             if (barcodes.length > 0) {
               barcodes.forEach(b => newResults.push(b.rawValue));
               foundCodes = true;
@@ -64,18 +45,7 @@ function Barcode() {
           }
         }
 
-        // Fallback: If native API fails or only finds 0-1 barcodes, brute-force slice the image!
         if (!foundCodes || newResults.length < 2) {
-            const img = new Image();
-            img.src = imageUrl;
-            await new Promise((resolve) => {
-              img.onload = resolve;
-              img.onerror = resolve;
-            });
-            
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d', { willReadFrequently: true });
-            
             const scanCanvas = async (cvs) => {
                try {
                   const dataUrl = cvs.toDataURL('image/jpeg');
@@ -84,37 +54,77 @@ function Barcode() {
                } catch(e) { /* ignore NotFoundException */ }
             };
 
-            // 1. Scan Full Image
-            canvas.width = img.width;
-            canvas.height = img.height;
-            ctx.drawImage(img, 0, 0);
             await scanCanvas(canvas);
 
-            // 2. Scan Image Slices (forces ZXing to find multiple barcodes in different regions)
-            if (img.width > 200 && img.height > 200) {
+            if (width > 200 && height > 200) {
               const slices = [
-                { x: 0, y: 0, w: img.width, h: img.height / 2 }, // Top Half
-                { x: 0, y: img.height / 2, w: img.width, h: img.height / 2 }, // Bottom Half
-                { x: 0, y: img.height / 4, w: img.width, h: img.height / 2 }, // Middle Horizontal
-                { x: 0, y: 0, w: img.width / 2, h: img.height }, // Left Half
-                { x: img.width / 2, y: 0, w: img.width / 2, h: img.height }, // Right Half
-                { x: img.width / 4, y: 0, w: img.width / 2, h: img.height } // Middle Vertical
+                { x: 0, y: 0, w: width, h: height / 2 },
+                { x: 0, y: height / 2, w: width, h: height / 2 },
+                { x: 0, y: height / 4, w: width, h: height / 2 },
+                { x: 0, y: 0, w: width / 2, h: height },
+                { x: width / 2, y: 0, w: width / 2, h: height },
+                { x: width / 4, y: 0, w: width / 2, h: height }
               ];
+              
+              const sliceCanvas = document.createElement('canvas');
+              const sliceCtx = sliceCanvas.getContext('2d', { willReadFrequently: true });
 
               for (const slice of slices) {
-                 canvas.width = slice.w;
-                 canvas.height = slice.h;
-                 ctx.drawImage(img, slice.x, slice.y, slice.w, slice.h, 0, 0, slice.w, slice.h);
-                 await scanCanvas(canvas);
+                 sliceCanvas.width = slice.w;
+                 sliceCanvas.height = slice.h;
+                 sliceCtx.drawImage(canvas, slice.x, slice.y, slice.w, slice.h, 0, 0, slice.w, slice.h);
+                 await scanCanvas(sliceCanvas);
               }
             }
         }
+    };
 
-        if (newResults.length === 0) {
-           errorCount++;
+    for (const file of files) {
+      try {
+        if (file.type === 'application/pdf') {
+          const arrayBuffer = await file.arrayBuffer();
+          const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          const numPages = pdfDoc.numPages;
+          let initialResultCount = newResults.length;
+
+          for (let i = 1; i <= numPages; i++) {
+            const page = await pdfDoc.getPage(i);
+            const scale = 2.5; // High resolution for better accuracy
+            const viewport = page.getViewport({ scale });
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d', { willReadFrequently: true });
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            
+            await page.render({ canvasContext: context, viewport }).promise;
+            await performScan(canvas, canvas, canvas.width, canvas.height);
+          }
+          if (newResults.length === initialResultCount) {
+             errorCount++;
+          }
+        } else {
+          const imageUrl = URL.createObjectURL(file);
+          const img = new Image();
+          img.src = imageUrl;
+          await new Promise((resolve) => {
+            img.onload = resolve;
+            img.onerror = resolve;
+          });
+          
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d', { willReadFrequently: true });
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+          
+          let initialResultCount = newResults.length;
+          await performScan(img, canvas, img.width, img.height);
+
+          if (newResults.length === initialResultCount) {
+             errorCount++;
+          }
+          URL.revokeObjectURL(imageUrl);
         }
-
-        URL.revokeObjectURL(imageUrl);
       } catch (err) {
         console.error("Barcode scan error for file:", file.name, err);
         errorCount++;
@@ -123,8 +133,9 @@ function Barcode() {
 
     if (newResults.length > 0) {
       // Safety net: split any commas just in case the API returned a concatenated string
+      // Do NOT split on spaces, as alphanumeric barcodes may contain spaces.
       const splitResults = newResults.flatMap(r => 
-        typeof r === 'string' ? r.split(/[\s,]+/).filter(x => x) : [r]
+        typeof r === 'string' ? r.split(/[\n,]+/).map(x => x.trim()).filter(x => x) : [r]
       );
       // Deduplicate within the same batch
       const uniqueBatch = [...new Set(splitResults)];
@@ -205,10 +216,10 @@ function Barcode() {
         >
           {isScanning ? 'Scanning...' : '📷 Upload Barcode'}
         </button>
-        <span style={{ color: '#64748b' }}>Supports PNG, JPG, and JPEG</span>
+        <span style={{ color: '#64748b' }}>Supports PNG, JPG, JPEG, and PDF</span>
         <input 
           type="file" 
-          accept="image/*" 
+          accept="image/*,application/pdf" 
           multiple
           ref={fileInputRef} 
           style={{ display: 'none' }} 

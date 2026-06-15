@@ -240,7 +240,7 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
       else data.gender = 'Other';
     }
 
-    const dateVal = findValue(['date', 'dischargedate', 'dateofdischarge', 'admissiondate', 'dateofadmission', 'ddate']);
+    const dateVal = findValue(['date', 'admissiondate', 'dateofadmission', 'admissiondate', 'dateofadmission', 'ddate']);
     if (dateVal !== null) {
       if (dateVal instanceof Date) {
         data.date = dateVal.toISOString().split('T')[0];
@@ -304,8 +304,8 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
       else data.gender = 'Other';
     }
 
-    // Match Date (e.g., "Discharge Date: 12-10-2023", "Date: 2023/10/12")
-    const dateMatch = normalizedText.match(/(?:date|discharge\s*date|admission\s*date)[. :\-\t]*([\d]{1,4}[-/.\\][\d]{1,2}[-/.\\][\d]{1,4})/i);
+    // Match Date (e.g., "Admission Date: 12-10-2023", "Date: 2023/10/12")
+    const dateMatch = normalizedText.match(/(?:date|AAdmission\s*Date)[. :\-\t]*([\d]{1,4}[-/.\\][\d]{1,2}[-/.\\][\d]{1,4})/i);
     if (dateMatch) {
       const d = new Date(dateMatch[1]);
       if (!isNaN(d.getTime())) {
@@ -336,22 +336,23 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
         const rawItems = textContent.items.map(item => item.str.trim()).filter(s => s.length > 0);
         
         // 1. Check if this is an Exported Table from our own system
-        const isTableFormat = rawItems.some(str => str.includes('Clinical Patient Records Database Report')) || 
-                              rawItems.findIndex(str => str.includes('IP No') || str.includes('Patient Name')) !== -1;
+        const joinedText = rawItems.join(' ').toUpperCase();
+        const isTableFormat = joinedText.includes('CLINICAL PATIENT RECORDS DATABASE REPORT') || 
+                              (joinedText.includes('IP NO') && joinedText.includes('PATIENT NAME'));
 
         if (isTableFormat) {
           // Find where the actual data starts (after the headers)
-          const headerIdx = rawItems.findIndex(str => str === 'Created By' || str === 'Gender');
+          const headerIdx = rawItems.findIndex(str => str.toUpperCase() === 'CREATED BY' || str.toUpperCase() === 'GENDER');
           if (headerIdx !== -1) {
             let cursor = headerIdx + 1;
-            // The exported table has 7 columns: IP No, Patient Name, Age, Date, Type, Gender, Created By
+            // The exported table has 7 columns: IP NO, PATIENT NAME, AGE, GENDER, DISCHARGE DATE, DOCUMENT TYPE, CREATED BY
             while (cursor + 6 < rawItems.length) {
-              // Attempt to parse a row. We check if the 3rd item is a number (Age) to verify alignment.
+              // Attempt to parse a row. We check if the 3rd item (Age) is a number to verify alignment.
               if (!isNaN(parseInt(rawItems[cursor + 2]))) {
-                const rowDate = rawItems[cursor + 3];
+                const rowDate = rawItems[cursor + 4]; // Discharge date is at index 4
                 // Convert DD/MM/YYYY to YYYY-MM-DD
                 let formattedDate = rowDate;
-                if (rowDate.includes('/')) {
+                if (rowDate && rowDate.includes('/')) {
                   const parts = rowDate.split('/');
                   if (parts.length === 3) formattedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
                 }
@@ -363,9 +364,9 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
                     ipNo: rawItems[cursor],
                     name: rawItems[cursor + 1],
                     age: rawItems[cursor + 2],
+                    gender: rawItems[cursor + 3],
                     date: formattedDate,
-                    recordType: rawItems[cursor + 4],
-                    gender: rawItems[cursor + 5]
+                    recordType: rawItems[cursor + 5]
                   }
                 });
                 cursor += 7; // move to next row
@@ -798,7 +799,7 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
             </Col>
 
             <Col xs={12} sm={6} md={2} className={`form-group ${errors.date ? 'has-error' : ''}`}>
-              <label htmlFor="date">Discharge Date</label>
+              <label htmlFor="date">Admission Date</label>
               <input type="date" id="date" name="date" value={formData.date} onChange={handleInputChange} className="custom-input" />
             </Col>
 
@@ -1257,7 +1258,7 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
                       <th style={{ padding: '12px', fontSize: '0.8rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Patient Name</th>
                       <th style={{ padding: '12px', fontSize: '0.8rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Age</th>
                       <th style={{ padding: '12px', fontSize: '0.8rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Gender</th>
-                      <th style={{ padding: '12px', fontSize: '0.8rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Discharge Date</th>
+                      <th style={{ padding: '12px', fontSize: '0.8rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Admission Date</th>
                       <th style={{ padding: '12px', fontSize: '0.8rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Document Type</th>
                       <th style={{ padding: '12px', textAlign: 'right' }}></th>
                     </tr>
@@ -1268,12 +1269,8 @@ function FileUpload({ onRecordSubmit, onViewSubmissions, requests = [], setReque
                       return (
                         <tr
                           key={row.id}
-                          onClick={() => {
-                            setFormData(row.mapped);
-                            setShowImportModal(false);
-                          }}
                           style={{
-                            cursor: 'pointer',
+                            cursor: 'default',
                             transition: 'background-color 0.15s',
                             backgroundColor: isDupe ? '#fff5f5' : 'transparent',
                             borderLeft: isDupe ? '4px solid #ef4444' : '4px solid transparent',

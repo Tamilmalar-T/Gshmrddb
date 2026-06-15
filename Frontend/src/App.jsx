@@ -3,7 +3,7 @@ import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import FileUpload from './FileUpload';
 import Viewform from './Viewform';
 import Requestform from './Dept.jsx/Requestform';
-// import Barcode from './Barcode';
+import Barcode from './Barcode';
 import Login from './Login';
 import DeptLogin from './DeptLogin';
 import SessionDetails from './SessionDetails';
@@ -42,6 +42,13 @@ function App() {
   };
 
   const handleDeptLogout = () => {
+    if (deptSession && deptSession.sessionId) {
+      fetch(`${API_URL}/api/auth/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: deptSession.sessionId })
+      }).catch(err => console.error("Logout error", err));
+    }
     setIsDeptLoggedIn(false);
     setDeptSession(null);
     localStorage.removeItem('medflow_deptIsLoggedIn');
@@ -155,7 +162,7 @@ function App() {
           }
           return r;
         }).filter(Boolean);
-        
+
         localStorage.setItem('medflow_submissions', JSON.stringify(updated));
         return updated;
       });
@@ -174,7 +181,7 @@ function App() {
         });
         formData.append("keepOriginal", keepOriginal);
 
-        // Append active gatekeeper clinician who is making this edit
+        // Append active user clinician who is making this edit
         const activeUser = currentSession ? currentSession.loginId : 'System';
         formData.append("updatedBy", activeUser);
 
@@ -260,6 +267,13 @@ function App() {
 
     setIsLoggedIn(false);
 
+    if (currentSession && currentSession.sessionId) {
+      fetch(`${API_URL}/api/auth/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: currentSession.sessionId })
+      }).catch(err => console.error("Logout error", err));
+    }
 
     localStorage.removeItem('medflow_isLoggedIn');
     localStorage.removeItem('medflow_authEmail');
@@ -328,7 +342,7 @@ function App() {
     <>
       <Routes>
         <Route
-          path="/dept"
+          path="/doctor"
           element={
             !isDeptLoggedIn ? (
               <DeptLogin onLoginSuccess={handleDeptLoginSuccess} />
@@ -414,18 +428,20 @@ function App() {
                       </div>
                     </div>
 
-                    {/* Hamburger menu button */}
-                    <button
-                      className="hamburger-btn"
-                      onClick={() => setShowSidebar(true)}
-                      title="Open menu"
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="17" height="17">
-                        <line x1="3" y1="6" x2="21" y2="6" strokeLinecap="round" />
-                        <line x1="3" y1="12" x2="21" y2="12" strokeLinecap="round" />
-                        <line x1="3" y1="18" x2="21" y2="18" strokeLinecap="round" />
-                      </svg>
-                    </button>
+                    {/* Hamburger menu button - Hidden for Restricted Users & Doctors */}
+                    {currentSession?.userType === 'Admin' && (
+                      <button
+                        className="hamburger-btn"
+                        onClick={() => setShowSidebar(true)}
+                        title="Open menu"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="17" height="17">
+                          <line x1="3" y1="6" x2="21" y2="6" strokeLinecap="round" />
+                          <line x1="3" y1="12" x2="21" y2="12" strokeLinecap="round" />
+                          <line x1="3" y1="18" x2="21" y2="18" strokeLinecap="round" />
+                        </svg>
+                      </button>
+                    )}
                   </div>
 
                   <nav className="header-nav">
@@ -436,12 +452,14 @@ function App() {
                   </nav>
 
                   <div className="header-auth">
-                    {/* <button
-                      className="view-accounts-btn"
-                      onClick={() => navigate('/accounts')}
-                    >
-                    View Account
-                    </button> */}
+                    {currentSession?.userType === 'Admin' && (
+                      <button
+                        className="view-accounts-btn"
+                        onClick={() => navigate('/accounts')}
+                      >
+                        View Account
+                      </button>
+                    )}
                     {currentSession && (
                       <span className="user-session-badge">
                         <span className="user-session-name">👤<span>{currentSession.loginId}</span></span>
@@ -511,9 +529,20 @@ function App() {
                   </div>
                 </header>
 
-                {/* Stats Summary Bar */}
-                <section className="stats-bar">
-                  <div className="stat-card">
+                {currentSession?.userType === 'Doctor' ? (
+                  <main className="main-content" style={{ marginTop: '20px' }}>
+                    <Requestform
+                      requests={requests}
+                      setRequests={setRequests}
+                      doctorName={currentSession.loginId}
+                      department={currentSession.department || 'Clinical'}
+                    />
+                  </main>
+                ) : (
+                  <>
+                    {/* Stats Summary Bar */}
+                    <section className="stats-bar">
+                      <div className="stat-card">
                     <div className="stat-icon">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 110-8 4 4 0 010 8zm14 14v-2a4 4 0 00-3-3.87m-4-12a4 4 0 010 7.75" strokeLinecap="round" strokeLinejoin="round" />
@@ -559,7 +588,7 @@ function App() {
                     <span className="nav-text">Document Uploded List</span>
                     {totalSubmissions > 0 && <span className="badge">{totalSubmissions}</span>}
                   </button>
-                  {/* <button
+                  <button
                     className={`nav-btn ${activeTab === 'export' ? 'active' : ''}`}
                     onClick={() => setActiveTab('export')}
                   >
@@ -569,7 +598,7 @@ function App() {
                       <line x1="12" y1="3" x2="12" y2="15" />
                     </svg>
                     <span className="nav-text">Bar code</span>
-                  </button> */}
+                  </button>
                   <button
                     className={`nav-btn mobile-only-btn ${showNotifications ? 'active' : ''}`}
                     onClick={() => {
@@ -628,8 +657,10 @@ function App() {
                       doctorName={currentSession?.loginId || 'Admin'}
                       department="Administration"
                     />
-                  )}
-                </main>
+                    )}
+                  </main>
+                </>
+                )}
               </div>
             )
           }

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { API_URL } from './config';
 
-const ROLES = ['Gatekeeper', 'Doctor', 'Admin', 'Nurse', 'Receptionist'];
+const ROLES = ['User', 'Doctor', 'Admin', 'Nurse', 'Receptionist'];
 
 const nowStr = () =>
   new Date().toLocaleString('en-IN', {
@@ -104,18 +104,20 @@ export default function UsersPanel() {
     return Object.keys(e).length === 0;
   };
 
-  const syncGatekeeper = (username, password) => {
+  const syncAuthorizedUser = (username, password, designation, userType) => {
     try {
-      const savedGatekeepers = JSON.parse(localStorage.getItem('medflow_gatekeeper_users') || '[{"username":"sadhana","password":"0633"}]');
-      const index = savedGatekeepers.findIndex(g => g.username.toLowerCase() === username.toLowerCase());
+      const savedUsers = JSON.parse(localStorage.getItem('medflow_authorized_users') || '[{"username":"sadhana","password":"0633"}]');
+      const index = savedUsers.findIndex(g => g.username.toLowerCase() === username.toLowerCase());
       if (index === -1) {
-        savedGatekeepers.push({ username, password });
+        savedUsers.push({ username, password, designation, userType });
       } else {
-        savedGatekeepers[index].password = password;
+        savedUsers[index].password = password;
+        if(designation) savedUsers[index].designation = designation;
+        if(userType) savedUsers[index].userType = userType;
       }
-      localStorage.setItem('medflow_gatekeeper_users', JSON.stringify(savedGatekeepers));
+      localStorage.setItem('medflow_authorized_users', JSON.stringify(savedUsers));
     } catch (e) {
-      console.error("Failed to sync gatekeeper", e);
+      console.error("Failed to sync user", e);
     }
   };
 
@@ -141,7 +143,7 @@ export default function UsersPanel() {
         if (!res.ok) throw new Error("Failed to add user");
         const saved = await res.json();
         setUsers([saved, ...users]);
-        syncGatekeeper(form.username.trim(), form.password.trim());
+        syncAuthorizedUser(form.username.trim(), form.password.trim(), form.designation, form.userType);
       } else {
         const u = users[editIndex];
         const payload = { ...u, ...form, photo: photoPreview, updatedBy: currentUser, updatedOn: timestamp };
@@ -153,7 +155,7 @@ export default function UsersPanel() {
         if (!res.ok) throw new Error("Failed to update user");
         const updated = await res.json();
         setUsers(users.map((user, i) => i === editIndex ? updated : user));
-        syncGatekeeper(form.username.trim(), form.password.trim());
+        syncAuthorizedUser(form.username.trim(), form.password.trim(), form.designation, form.userType);
       }
       closeForm();
     } catch (err) {
@@ -218,7 +220,7 @@ export default function UsersPanel() {
 
   const roleBadge = (role) => {
     const map = {
-      Gatekeeper: ['#fef3c7', '#92400e'], Doctor: ['#ecfdf5', '#065f46'],
+      User: ['#fef3c7', '#92400e'], Doctor: ['#ecfdf5', '#065f46'],
       Admin: ['#ede9fe', '#5b21b6'], Nurse: ['#fce7f3', '#9d174d'],
       Receptionist: ['#e0f2fe', '#0369a1'],
     };
@@ -233,7 +235,7 @@ export default function UsersPanel() {
       <div style={{ marginBottom: '1.5rem' }}>
         <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>User Management</h2>
         <p style={{ color: '#64748b', fontSize: '0.875rem', margin: '4px 0 0' }}>
-          Manage system users — gatekeepers, doctors, and administrative staff.
+          Manage system users — users, doctors, and administrative staff.
         </p>
       </div>
 

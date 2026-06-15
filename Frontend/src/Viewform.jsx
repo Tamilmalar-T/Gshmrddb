@@ -171,7 +171,7 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
       { wch: 30 }, // PATIENT NAME
       { wch: 10 }, // AGE
       { wch: 15 }, // GENDER
-      { wch: 20 }, // DISCHARGE DATE
+      { wch: 20 }, // ADDMISSTION DATE
       { wch: 25 }, // DOCUMENT TYPE
       { wch: 20 }  // CREATED BY
     ];
@@ -461,9 +461,9 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
             defaultValue=""
           >
             <option value="" disabled>Select Format...</option>
-            <option value="pdf">📄 PDF Document</option>
-            <option value="excel">📊 Excel Spreadsheet</option>
-            <option value="print">🖨️ Print Records</option>
+            <option value="pdf">📄 PDF </option>
+            <option value="excel">📊 Excel </option>
+            <option value="print">🖨️ Print </option>
           </select>
         </div>
       </div>
@@ -524,9 +524,10 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
                   <th>IP No</th>
                   <th>Patient Name</th>
                   <th>Age</th>
-                  <th> Date</th>
-                  <th>type</th>
                   <th>Gender</th>
+                  <th> Admission Date</th>
+                  <th>type</th>
+                  
 
                   <th>Created By / On</th>
                   <th>Updated By / On</th>
@@ -587,6 +588,14 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
                     {/* Age column */}
                     <td>{group.age} </td>
 
+                       {/* Gender column */}
+                    <td>
+                      <span className={`gender-tag ${(group.gender || '').toLowerCase()}`}>
+                        {group.gender}
+                      </span>
+                    </td>
+                    
+
                     {/* Date column */}
                     <td>{formatDateToDDMMYYYY(group.date)}</td>
 
@@ -611,12 +620,7 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
                       })()}
                     </td>
 
-                    {/* Gender column */}
-                    <td>
-                      <span className={`gender-tag ${(group.gender || '').toLowerCase()}`}>
-                        {group.gender}
-                      </span>
-                    </td>
+                 
 
 
 
@@ -836,22 +840,18 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
 
       {/* Patient Detail Modal */}
       {selectedRecord && (
-        <div className="modal-backdrop animate-fade-in" onClick={handleCloseModal}>
+        <div className="modal-backdrop animate-fade-in">
           <div className="patient-card-modal animate-scale-up" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close-btn" onClick={handleCloseModal}>&times;</button>
 
             <div className="patient-card-header">
-              <div className="avatar-large">
-                {selectedRecord.name.charAt(0).toUpperCase()}
-              </div>
               <div className="patient-header-details">
-                <h3>{selectedRecord.name}</h3>
-
+                <h3>Patient Profile</h3>
               </div>
             </div>
 
-            <Row className="patient-card-grid g-2 mb-2">
-              <Col xs={12} sm={6} md={4} className="grid-item">
+            <Row className="patient-card-grid gx-0 gy-3 mb-3">
+              <Col xs={12} sm={6} md={3} className="grid-item">
                 <span className="grid-label">IP No</span>
                 <code className="grid-value ip-code">{selectedRecord.ipNo}</code>
                 {groupedRecords.filter(r => r.ipNo === selectedRecord.ipNo).length > 1 && (
@@ -869,27 +869,32 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
                   </span>
                 )}
               </Col>
-              <Col xs={12} sm={6} md={4} className="grid-item">
+              <Col xs={12} sm={6} md={3} className="grid-item">
+                <span className="grid-label">Patient Name</span>
+                <span className="grid-value">{selectedRecord.name}</span>
+              </Col>
+              <Col xs={12} sm={6} md={3} className="grid-item">
                 <span className="grid-label">Age</span>
                 <span className="grid-value">{selectedRecord.age} Years Old</span>
               </Col>
-              <Col xs={12} sm={6} md={4} className="grid-item">
-                <span className="grid-label">Discharge</span>
-                <span className="grid-value">{formatDateToDDMMYYYY(selectedRecord.date)}</span>
-              </Col>
-              <Col xs={12} sm={6} md={4} className="grid-item">
+              <Col xs={12} sm={6} md={3} className="grid-item">
                 <span className="grid-label">Gender</span>
                 <span className={`gender-tag ${(selectedRecord.gender || '').toLowerCase()} large`}>
                   {selectedRecord.gender}
                 </span>
               </Col>
-              <Col xs={12} sm={6} md={4} className="grid-item">
+              
+              <Col xs={12} sm={6} md={3} className="grid-item">
+                <span className="grid-label">Discharge</span>
+                <span className="grid-value">{formatDateToDDMMYYYY(selectedRecord.date)}</span>
+              </Col>
+              <Col xs={12} sm={6} md={3} className="grid-item">
                 <span className="grid-label">type</span>
                 <span className="grid-value" style={{ textTransform: 'capitalize' }}>
                   {selectedRecord.recordType || 'Uncategorized'}
                 </span>
               </Col>
-              <Col xs={12} sm={6} md={4} className="grid-item">
+              <Col xs={12} sm={6} md={3} className="grid-item">
                 <span className="grid-label">Created By / On</span>
                 <span className="grid-value" style={{ color: '#4f46e5', fontWeight: 'bold' }}>
                   {selectedRecord.createdBy || 'System'}{' '}
@@ -900,7 +905,7 @@ function Viewform({ records, onDeleteRecord, onEditRecord, onExportClick }) {
                   )}
                 </span>
               </Col>
-              <Col xs={12} sm={6} md={4} className="grid-item">
+              <Col xs={12} sm={6} md={3} className="grid-item">
                 <span className="grid-label">Last Updated By / On</span>
                 <span className="grid-value" style={{ color: selectedRecord.updatedBy ? '#10b981' : '#cbd5e1', fontWeight: selectedRecord.updatedBy ? 'bold' : 'normal' }}>
                   {selectedRecord.updatedBy ? (

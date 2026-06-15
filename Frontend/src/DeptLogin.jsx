@@ -130,8 +130,8 @@ const DeptLogin = ({ onLoginSuccess }) => {
                 <path d="M22 12h-4l-3 9L9 3l-3 9H2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
-            <h2>MedFlow Clinical Login</h2>
-            <p>Sign in to your clinical department to submit patient record requests.</p>
+            <h2>Doctor Login</h2>
+            <p>Sign in as a doctor to submit patient record requests.</p>
           </div>
 
           {error && (
@@ -191,7 +191,7 @@ const DeptLogin = ({ onLoginSuccess }) => {
 
             {!isResetMode ? (
               <div className="input-group-premium">
-                <label htmlFor="password">Department Keycard Password</label>
+                <label htmlFor="password">Doctor Password</label>
                 <div className="input-with-icon">
                   <span className="input-icon">🔑</span>
                   <input
